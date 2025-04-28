@@ -1,14 +1,15 @@
+# pylint: disable=invalid-name, line-too-long
 """
 Feature Engineering for Housing Prices Dataset
 """
 import pandas as pd
 
-
-
 def impute_most_frequent(df, cols, value):
     """
     Impute missing values in the specified column with the most frequent value.
     """
+    cols = [cols] if isinstance(cols, str) else cols
+
     replacements = {}
     for col in cols:
         most_frequent = df.loc[df[col] != value, col].mode()[0]
@@ -23,6 +24,8 @@ def feature_eng(df, cols, defaults, code_mappings, drop=True):
     """
     Feature engineering function to create new features based on categorical codes.
     """
+    # print(f"Feature engineering {cols}...")
+
     cols = [cols] if isinstance(cols, str) else cols
     prefix = f"{cols[0]}_"
 
@@ -45,11 +48,13 @@ def feature_eng(df, cols, defaults, code_mappings, drop=True):
             feature_name = f"{prefix}{feature}"
             new_features[feature_name] = new_features[feature_name].mask(combined_mask, value)
 
-    new_features_df = pd.DataFrame(new_features)
-    df = pd.concat([df, new_features_df], axis=1)
+    for column_name, column_values in new_features.items():
+        df[column_name] = column_values
 
     if drop:
         df.drop(columns=cols, inplace=True)
+
+    return df
 
 
 
@@ -275,29 +280,30 @@ def feature_engineering(df):
         'is_shingle': False,
         'is_stucco': False,
         'is_premium': False,
-        'durability': 'medium'  # low, medium, high
+        'durability': -1
     }
     Exterior_code_mappings = {
-        'AsbShng': {'material_type': 'asbestos', 'is_shingle': True, 'durability': 'low'},
-        'AsphShn': {'material_type': 'asphalt', 'is_shingle': True, 'durability': 'low'},
-        'BrkComm': {'material_type': 'brick','is_masonry': True, 'durability': 'high', 'is_premium': False},
-        'BrkFace': {'material_type': 'brick', 'is_masonry': True, 'durability': 'high', 'is_premium': True},
-        'CBlock': {'material_type': 'cinder_block', 'is_masonry': True, 'durability': 'high', 'is_premium': False},
-        'CemntBd': {'material_type': 'cement', 'is_siding': True, 'durability': 'high'},
-        'HdBoard': {'material_type': 'hardboard', 'is_wood_based': True, 'is_siding': True, 'durability': 'medium'},
-        'ImStucc': {'material_type': 'imitation_stucco','is_stucco': True, 'durability': 'medium'},
-        'MetalSd': {'material_type': 'metal', 'is_siding': True, 'durability': 'high'},
-        'Other': {'material_type': 'other', 'durability': 'medium'},
-        'Plywood': {'material_type': 'plywood', 'is_wood_based': True, 'durability': 'medium'},
-        'PreCast': {'material_type': 'precast', 'is_masonry': True,'durability': 'high','is_premium': True},
-        'Stone': {'material_type': 'stone', 'is_masonry': True,'durability': 'high','is_premium': True},
-        'Stucco': {'material_type': 'stucco', 'is_stucco': True,'durability': 'high'},
-        'VinylSd': {'material_type': 'vinyl', 'is_siding': True,'durability': 'medium'},
-        'Wd Sdng': {'material_type': 'wood', 'is_wood_based': True, 'is_siding': True,'durability': 'medium'},
-        'WdShing': {'material_type': 'wood', 'is_wood_based': True, 'is_shingle': True,'durability': 'medium'}
+        'AsbShng': {'material_type': 'asbestos', 'is_shingle': True, 'durability': 1},
+        'AsphShn': {'material_type': 'asphalt', 'is_shingle': True, 'durability': 1},
+        'BrkComm': {'material_type': 'brick','is_masonry': True, 'durability': 3, 'is_premium': False},
+        'BrkFace': {'material_type': 'brick', 'is_masonry': True, 'durability': 3, 'is_premium': True},
+        'CBlock': {'material_type': 'cinder_block', 'is_masonry': True, 'durability': 3, 'is_premium': False},
+        'CemntBd': {'material_type': 'cement', 'is_siding': True, 'durability': 3},
+        'HdBoard': {'material_type': 'hardboard', 'is_wood_based': True, 'is_siding': True, 'durability': 2},
+        'ImStucc': {'material_type': 'imitation_stucco','is_stucco': True, 'durability': 2},
+        'MetalSd': {'material_type': 'metal', 'is_siding': True, 'durability': 3},
+        'Other': {'material_type': 'other', 'durability': 2},
+        'Plywood': {'material_type': 'plywood', 'is_wood_based': True, 'durability': 2},
+        'PreCast': {'material_type': 'precast', 'is_masonry': True,'durability': 3,'is_premium': True},
+        'Stone': {'material_type': 'stone', 'is_masonry': True,'durability': 3,'is_premium': True},
+        'Stucco': {'material_type': 'stucco', 'is_stucco': True,'durability': 3},
+        'VinylSd': {'material_type': 'vinyl', 'is_siding': True,'durability': 2},
+        'Wd Sdng': {'material_type': 'wood', 'is_wood_based': True, 'is_siding': True,'durability': 2},
+        'WdShing': {'material_type': 'wood', 'is_wood_based': True, 'is_shingle': True,'durability': 2}
     }
     feature_eng(df, cols=['Exterior1st', 'Exterior2nd'], defaults=Exterior_defaults, code_mappings=Exterior_code_mappings)
     impute_most_frequent(df, 'Exterior1st_material_type', 'unspecified')
+    impute_most_frequent(df, 'Exterior1st_durability', -1)
 
     #MasVnrType
     MasVnrType_defaults = {
@@ -515,6 +521,8 @@ def feature_engineering(df):
     }
     feature_eng(df, cols='SaleCondition', defaults=SaleCondition_defaults, code_mappings=SaleCondition_code_mappings)
 
+    df=df.copy()
+
     print("columns after:", len(df.columns))
 
     fill_na(df,['BsmtFinSF1','BsmtFinSF2','BsmtUnfSF', 'TotalBsmtSF','BsmtFullBath','BsmtHalfBath','GarageCars','GarageArea'],0)
@@ -526,9 +534,5 @@ def feature_engineering(df):
     df['Age']=df['YrSold']-df['YearBuilt']
     df['YrsRemodAdd']=df['YrSold']-df['YearRemodAdd']
 
-    df=df.copy()
+
     return df
-
-
-
-
