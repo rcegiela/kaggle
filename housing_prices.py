@@ -1,11 +1,12 @@
 """
 Kagger Housing Prices
 """
+import warnings
 from pathlib import Path
+import pprint
 import pandas as pd
 import numpy as np
-import pprint
-from sklearn.pipeline import Pipeline
+
 from sklearn.preprocessing import StandardScaler, OneHotEncoder
 from sklearn.model_selection import train_test_split
 from sklearn.metrics import mean_squared_error, r2_score
@@ -15,7 +16,14 @@ from skopt import BayesSearchCV
 from skopt.space import Real, Integer, Categorical
 
 from housing_prices_features import feature_engineering
-from util import ProgressBarCallbackN, name_feature_importances
+from util import ProgressBarCallback, name_feature_importances
+
+warnings.filterwarnings('ignore')
+
+# Check LGBM
+print("LightGBM version: ")
+print(lgb.__file__)
+print(lgb.__version__)
 
 # Load the data
 subdirectory = Path('housing-prices')
@@ -55,19 +63,25 @@ preprocessor = ColumnTransformer(
         categorical_columns
         ),
     ],
-    remainder='passthrough'
+    remainder='passthrough',
+    verbose_feature_names_out=True
 )
 
 print("Preprocessing the data...\n")
 preprocessor.fit(X)
-X_transformed = preprocessor.transform(X)
-X_test_transformed = preprocessor.transform(X_test)
-X_submit_transformed = preprocessor.transform(X_submit)
+feature_names = preprocessor.get_feature_names_out()
+X_transformed = pd.DataFrame(preprocessor.transform(X), columns=feature_names)
+X_test_transformed = pd.DataFrame(preprocessor.transform(X_test), columns=feature_names)
+X_submit_transformed = pd.DataFrame(preprocessor.transform(X_submit), columns=feature_names)
+
+feature_names = preprocessor.get_feature_names_out()
 
 lgbm_model = lgb.LGBMRegressor()
 
 # Hyperparameter tuning
 param_space = {
+    #'device': Categorical(['gpu']),
+    #'tree_method': Categorical(['gpu_hist']),
     'learning_rate': Real(0.08, 0.12, prior='log-uniform'),
     'n_estimators': Integer(250, 400),
     'max_depth': Categorical([3, 4, 5, 6]),
@@ -81,9 +95,10 @@ param_space = {
     'min_split_gain': Real(0.002, 0.01),
     'force_row_wise': Categorical([True]),
     'verbose': Categorical([-1]),
+    'silent': Categorical([True])
 }
 
-N_ITER = 2
+N_ITER = 5
 
 bayes_search = BayesSearchCV(
     lgbm_model,
@@ -99,16 +114,18 @@ bayes_search = BayesSearchCV(
 fit_params = {}
 
 # Fit the pipeline
-progress_callback = ProgressBarCallbackN(N_ITER, "Bayesian Optimization")
-#with suppress_output(suppress_stderr=True):
+progress_callback = ProgressBarCallback(N_ITER, "Bayes")
 bayes_search.fit(X_transformed, y, callback=progress_callback, **fit_params)
 
 # Show the best parameters
+print("\nBest params:")
 pprint.pprint(bayes_search.best_params_)
 
 # Show feature importances
 fe_imp = bayes_search.best_estimator_.feature_importances_
-name_feature_importances(fe_imp, X_transformed.columns)
+feature_importances=name_feature_importances(fe_imp, feature_names)
+print("\nFeature importances:")
+pprint.pprint(feature_importances[:7])
 
 # Score for submission
 y_pred = bayes_search.predict(X_test_transformed)
