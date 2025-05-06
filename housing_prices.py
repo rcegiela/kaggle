@@ -1,5 +1,5 @@
 """
-Kagger Housing Prices
+Kaggle Housing Prices
 """
 import warnings
 from pathlib import Path

@@ -533,6 +533,7 @@ def feature_engineering(df):
     # New features
     df['Age']=df['YrSold']-df['YearBuilt']
     df['YrsRemodAdd']=df['YrSold']-df['YearRemodAdd']
+    df['YrSoldCat']=df['YrSold'].astype('category')
 
     df['TotalBuildingArea'] = df['1stFlrSF'] + df['2ndFlrSF'] + df['LowQualFinSF'] + df['TotalBsmtSF'] + df['GarageArea']
     df['ExteriorFeaturesArea'] = df['WoodDeckSF'] + df['OpenPorchSF'] + df['EnclosedPorch'] + df['3SsnPorch'] + df['ScreenPorch'] + df['PoolArea']
