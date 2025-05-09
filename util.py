@@ -2,8 +2,55 @@
 Utility functions for optimization and feature importance analysis.
 """
 import time
+from datetime import datetime
 from tqdm.notebook import tqdm as tqdm_n
 from tqdm import tqdm
+from colorama import Fore, Style
+
+# pylint: disable=invalid-name, line-too-long
+
+class Timer:
+    """A simple timer class to measure elapsed time."""
+    def __init__(self, name=None, start=False, verbose=False):
+        self.name = name
+        self.verbose = verbose
+
+        if start:
+            self.start()
+        else:
+            self.start_time = None
+            self.mid_time = None
+
+    def start(self):
+        """Start the timer."""
+        self.start_time = time.time()
+        self.mid_time = self.start_time
+        if self.verbose:
+            dt = datetime.fromtimestamp(self.start_time)
+            print(f"Timer {self.name} initialized at {dt.strftime('%Y-%m-%d %H:%M:%S')}.")
+
+
+    def elapsed(self):
+        """Get the elapsed time since the timer was started."""
+        if self.start_time is None:
+            raise ValueError("Timer has not been started.")
+        elapsed_time = time.time() - self.start_time
+        elapsed_mid_time = time.time() - self.mid_time
+        self.mid_time = time.time()
+        return elapsed_time, elapsed_mid_time
+
+    def stop(self):
+        """Reset the timer."""
+        self.start_time = None
+
+    def show(self):
+        """Print the elapsed time in a formatted string."""
+        elapsed_time, elapsed_mid_time = self.elapsed()
+        print(
+            f"{self.name+': ' if self.name else ''}Elapsed time: "
+            f"{Fore.RED}{elapsed_time:.2f}{Style.RESET_ALL} sec "
+            f"({Fore.RED}{elapsed_mid_time:.2f}{Style.RESET_ALL} sec)"
+            )
 
 
 class ProgressBarCallback:
